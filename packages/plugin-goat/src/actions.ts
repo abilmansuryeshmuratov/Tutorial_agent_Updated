@@ -3,6 +3,8 @@ import { MODE, USDC, erc20 } from "@goat-sdk/plugin-erc20";
 import { kim } from "@goat-sdk/plugin-kim";
 import { sendETH } from "@goat-sdk/wallet-evm";
 import type { WalletClientBase } from "@goat-sdk/core";
+//import { coingecko } from "@goat-sdk/plugin-coingecko";
+import { birdeye } from "@goat-sdk/plugin-birdeye";
 
 import {
     generateText,
@@ -29,7 +31,14 @@ export async function getOnChainActions(wallet: WalletClientBase) {
     const tools = await getOnChainTools({
         wallet: wallet,
         // 2. Configure the plugins you need to perform those actions
-        plugins: [sendETH(), erc20({ tokens: [USDC, MODE] }), kim()],
+        plugins: [
+            sendETH(),
+            erc20({ tokens: [USDC, MODE] }),
+            kim(),
+            birdeye({
+                apiKey: process.env.BIRDEYE_API_KEY,
+            }),
+        ],
     });
 
     // 3. Let GOAT handle all the actions

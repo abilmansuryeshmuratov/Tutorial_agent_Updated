@@ -79,12 +79,12 @@ import {
     tradePlugin,
     webhookPlugin,
 } from "@elizaos/plugin-coinbase";
-import { coingeckoPlugin } from "@elizaos/plugin-coingecko";
+//import { coingeckoPlugin } from "../../packages/plugin-coingecko-old/dist";
 import { coinmarketcapPlugin } from "@elizaos/plugin-coinmarketcap";
 import { confluxPlugin } from "@elizaos/plugin-conflux";
 import { createCosmosPlugin } from "@elizaos/plugin-cosmos";
 import { cronosZkEVMPlugin } from "@elizaos/plugin-cronoszkevm";
-import { evmPlugin } from "@elizaos/plugin-evm";
+//import { evmPlugin } from "@elizaos/plugin-evm";
 import { flowPlugin } from "@elizaos/plugin-flow";
 import { fuelPlugin } from "@elizaos/plugin-fuel";
 import { genLayerPlugin } from "@elizaos/plugin-genlayer";
@@ -1063,13 +1063,13 @@ export async function createAgent(
                 ? nearPlugin
                 : null,
             getSecret(character, "EVM_PUBLIC_KEY") ||
-            (getSecret(character, "WALLET_PUBLIC_KEY") &&
-                getSecret(character, "WALLET_PUBLIC_KEY")?.startsWith("0x"))
-                ? evmPlugin
-                : null,
-            (getSecret(character, "EVM_PUBLIC_KEY") ||
+            //(getSecret(character, "WALLET_PUBLIC_KEY") &&
+            //getSecret(character, "WALLET_PUBLIC_KEY")?.startsWith("0x"))
+            // ? evmPlugin
+            //: null,
+            ((getSecret(character, "EVM_PUBLIC_KEY") ||
                 getSecret(character, "INJECTIVE_PUBLIC_KEY")) &&
-            getSecret(character, "INJECTIVE_PRIVATE_KEY")
+                getSecret(character, "INJECTIVE_PRIVATE_KEY"))
                 ? injectivePlugin
                 : null,
             getSecret(character, "COSMOS_RECOVERY_PHRASE") &&
@@ -1135,10 +1135,10 @@ export async function createAgent(
                 : null,
             goatPlugin,
             zilliqaPlugin,
-            getSecret(character, "COINGECKO_API_KEY") ||
-            getSecret(character, "COINGECKO_PRO_API_KEY")
-                ? coingeckoPlugin
-                : null,
+            //getSecret(character, "COINGECKO_API_KEY") ||
+            //getSecret(character, "COINGECKO_PRO_API_KEY")
+            //    ? coingeckoPlugin
+            //    : null,
             getSecret(character, "MORALIS_API_KEY") ? moralisPlugin : null,
             getSecret(character, "EVM_PROVIDER_URL") ? goatPlugin : null,
             getSecret(character, "ABSTRACT_PRIVATE_KEY")
