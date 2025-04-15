@@ -23,6 +23,12 @@
   "imageVisionModelProvider": "openai",
   "settings": {
     "twitter": {
+      "approvalRequired": {
+        "posts": true,
+        "replies": true,
+        "retweets": true,
+        "likes": true
+      },
       "media": {
         "enabled": true,
         "basePath": "characters/tutorial_girl1/media/profile",

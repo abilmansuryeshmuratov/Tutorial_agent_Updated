@@ -3,7 +3,7 @@ import { MODE, USDC, erc20 } from "@goat-sdk/plugin-erc20";
 import { kim } from "@goat-sdk/plugin-kim";
 import { sendETH } from "@goat-sdk/wallet-evm";
 import type { WalletClientBase } from "@goat-sdk/core";
-//import { coingecko } from "@goat-sdk/plugin-coingecko";
+import { coingecko } from "@goat-sdk/plugin-coingecko";
 import { birdeye } from "@goat-sdk/plugin-birdeye";
 
 import {
@@ -37,6 +37,9 @@ export async function getOnChainActions(wallet: WalletClientBase) {
             kim(),
             birdeye({
                 apiKey: process.env.BIRDEYE_API_KEY,
+            }),
+            coingecko({
+                apiKey: process.env.COINGECKO_API_KEY,
             }),
         ],
     });
