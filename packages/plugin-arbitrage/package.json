@@ -1,6 +1,6 @@
 {
     "name": "@elizaos/plugin-arbitrage",
-    "version": "0.1.9",
+    "version": "1.0.15",
     "description": "Arbitrage trading plugin for Eliza",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",

@@ -1,0 +1,281 @@
+/**
+ * Unit tests for plugin-bnb-mcp
+ * Tests the BNB MCP plugin functionality without API keys
+ */
+
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { EnvironmentMocker } from '../../../utils/mockProvider';
+import { MockViemClient, mockRPCResponses } from './mocks/rpc.mock';
+
+// Mock viem
+vi.mock('viem', () => ({
+  createPublicClient: vi.fn(() => new MockViemClient()),
+  http: vi.fn((url: string) => ({ url })),
+  parseEther: vi.fn((value: string) => BigInt(value) * 10n ** 18n),
+  formatEther: vi.fn((value: bigint) => (Number(value) / 1e18).toString()),
+  getAddress: vi.fn((address: string) => address.toLowerCase())
+}));
+
+describe('Plugin-BNB-MCP Tests', () => {
+  const envMocker = new EnvironmentMocker();
+
+  beforeEach(() => {
+    // Clear environment variables
+    envMocker.mock({
+      RPC_URL: undefined
+    });
+  });
+
+  afterEach(() => {
+    envMocker.restore();
+    vi.clearAllMocks();
+  });
+
+  describe('MCP Client', () => {
+    it('should use default RPC URL when not provided', async () => {
+      const { MCPClient } = await import('@elizaos/plugin-bnb-mcp/src/services/mcpClient');
+      
+      const client = new MCPClient();
+      expect(client).toBeDefined();
+      
+      // Verify it uses the default BSC RPC
+      const viem = require('viem');
+      expect(viem.http).toHaveBeenCalledWith('https://bsc-dataseed.binance.org/');
+    });
+
+    it('should use custom RPC URL when provided', async () => {
+      envMocker.mock({
+        RPC_URL: 'https://custom-rpc.example.com'
+      });
+
+      const { MCPClient } = await import('@elizaos/plugin-bnb-mcp/src/services/mcpClient');
+      
+      const client = new MCPClient();
+      
+      const viem = require('viem');
+      expect(viem.http).toHaveBeenCalledWith('https://custom-rpc.example.com');
+    });
+
+    it('should fetch large transactions', async () => {
+      const { MCPClient } = await import('@elizaos/plugin-bnb-mcp/src/services/mcpClient');
+      
+      const client = new MCPClient();
+      const transactions = await client.getLargeTransactions();
+      
+      expect(transactions).toBeDefined();
+      expect(Array.isArray(transactions)).toBe(true);
+      expect(transactions.length).toBeGreaterThan(0);
+      
+      // Check transaction structure
+      const tx = transactions[0];
+      expect(tx).toHaveProperty('hash');
+      expect(tx).toHaveProperty('from');
+      expect(tx).toHaveProperty('to');
+      expect(tx).toHaveProperty('value');
+    });
+
+    it('should fetch token transfers', async () => {
+      const { MCPClient } = await import('@elizaos/plugin-bnb-mcp/src/services/mcpClient');
+      
+      const client = new MCPClient();
+      const transfers = await client.getTokenTransfers();
+      
+      expect(transfers).toBeDefined();
+      expect(Array.isArray(transfers)).toBe(true);
+      
+      if (transfers.length > 0) {
+        const transfer = transfers[0];
+        expect(transfer).toHaveProperty('address');
+        expect(transfer).toHaveProperty('topics');
+        expect(transfer).toHaveProperty('data');
+      }
+    });
+
+    it('should detect new contracts', async () => {
+      const { MCPClient } = await import('@elizaos/plugin-bnb-mcp/src/services/mcpClient');
+      
+      const client = new MCPClient();
+      const contracts = await client.getNewContracts();
+      
+      expect(contracts).toBeDefined();
+      expect(Array.isArray(contracts)).toBe(true);
+    });
+
+    it('should get current gas price', async () => {
+      const { MCPClient } = await import('@elizaos/plugin-bnb-mcp/src/services/mcpClient');
+      
+      const client = new MCPClient();
+      const gasPrice = await client.getGasPrice();
+      
+      expect(gasPrice).toBeDefined();
+      expect(gasPrice).toBe(BigInt(parseInt(mockRPCResponses.gasPrice, 16)));
+    });
+  });
+
+  describe('Insight Analyzer', () => {
+    it('should analyze large transaction', async () => {
+      const { InsightAnalyzer } = await import('@elizaos/plugin-bnb-mcp/src/services/insightAnalyzer');
+      
+      const analyzer = new InsightAnalyzer();
+      const insight = await analyzer.analyzeLargeTransaction({
+        hash: mockRPCResponses.largeTransaction.hash,
+        from: mockRPCResponses.largeTransaction.from,
+        to: mockRPCResponses.largeTransaction.to,
+        value: mockRPCResponses.largeTransaction.value,
+        blockNumber: mockRPCResponses.largeTransaction.blockNumber
+      });
+      
+      expect(insight).toBeDefined();
+      expect(insight.type).toBe('large_transaction');
+      expect(insight.data).toHaveProperty('amount');
+      expect(insight.isInteresting).toBe(true);
+    });
+
+    it('should analyze token transfer', async () => {
+      const { InsightAnalyzer } = await import('@elizaos/plugin-bnb-mcp/src/services/insightAnalyzer');
+      
+      const analyzer = new InsightAnalyzer();
+      const insight = await analyzer.analyzeTokenTransfer({
+        tokenAddress: mockRPCResponses.tokenTransferLog.address,
+        from: '0x742d35cc6634c0532925a3b844bc9e7595f7f123',
+        to: '0x8a3b1c4d5e6f7890abcdef1234567890abcdef12',
+        amount: mockRPCResponses.tokenTransferLog.data
+      });
+      
+      expect(insight).toBeDefined();
+      expect(insight.type).toBe('token_transfer');
+      expect(insight.isInteresting).toBeDefined();
+    });
+
+    it('should analyze new contract deployment', async () => {
+      const { InsightAnalyzer } = await import('@elizaos/plugin-bnb-mcp/src/services/insightAnalyzer');
+      
+      const analyzer = new InsightAnalyzer();
+      const insight = await analyzer.analyzeNewContract({
+        address: '0xNewContract123...',
+        deployer: mockRPCResponses.contractCreation.from,
+        transactionHash: mockRPCResponses.contractCreation.hash
+      });
+      
+      expect(insight).toBeDefined();
+      expect(insight.type).toBe('new_contract');
+      expect(insight.isInteresting).toBe(true);
+    });
+  });
+
+  describe('BNB MCP Insights Action', () => {
+    it('should execute without runtime errors', async () => {
+      const { bnbMcpInsightsAction } = await import('@elizaos/plugin-bnb-mcp/src/actions/bnbMcpInsights');
+      
+      const mockRuntime = {
+        getSetting: vi.fn(),
+        composeState: vi.fn(),
+        updateRecentMessageState: vi.fn()
+      };
+
+      const mockMessage = {
+        userId: 'test-user',
+        content: {
+          text: 'Get BNB insights'
+        }
+      };
+
+      const mockCallback = vi.fn();
+
+      // Execute action
+      await bnbMcpInsightsAction.handler(
+        mockRuntime as any,
+        mockMessage as any,
+        {} as any,
+        {} as any,
+        mockCallback
+      );
+
+      // Should call callback with insights
+      expect(mockCallback).toHaveBeenCalled();
+      const callbackData = mockCallback.mock.calls[0][0];
+      expect(callbackData).toBeDefined();
+      expect(callbackData.text).toContain('insight');
+    });
+
+    it('should handle RPC errors gracefully', async () => {
+      // Mock RPC failure
+      const MockFailingClient = class extends MockViemClient {
+        async getBlockNumber() {
+          throw new Error('RPC Connection failed');
+        }
+      };
+
+      vi.mocked(require('viem').createPublicClient).mockReturnValueOnce(new MockFailingClient());
+
+      const { bnbMcpInsightsAction } = await import('@elizaos/plugin-bnb-mcp/src/actions/bnbMcpInsights');
+      
+      const mockCallback = vi.fn();
+      
+      await bnbMcpInsightsAction.handler(
+        {} as any,
+        {} as any,
+        {} as any,
+        {} as any,
+        mockCallback
+      );
+
+      // Should still call callback with error message
+      expect(mockCallback).toHaveBeenCalled();
+      const response = mockCallback.mock.calls[0][0];
+      expect(response.text).toContain('error');
+    });
+  });
+
+  describe('Twitter Service', () => {
+    it('should generate tweet from insight', async () => {
+      const { TwitterService } = await import('@elizaos/plugin-bnb-mcp/src/services/twitterService');
+      
+      const mockRuntime = {
+        generateText: vi.fn().mockResolvedValue('🚨 Large BNB transaction detected! 5 BNB moved between wallets.')
+      };
+
+      const service = new TwitterService(mockRuntime as any);
+      
+      const insight = {
+        type: 'large_transaction',
+        data: {
+          amount: '5',
+          from: '0x123...',
+          to: '0x456...'
+        },
+        isInteresting: true,
+        timestamp: Date.now()
+      };
+
+      const tweet = await service.generateTweet(insight);
+      
+      expect(tweet).toBeDefined();
+      expect(tweet).toContain('BNB');
+      expect(mockRuntime.generateText).toHaveBeenCalled();
+    });
+
+    it('should handle tweet generation failure', async () => {
+      const { TwitterService } = await import('@elizaos/plugin-bnb-mcp/src/services/twitterService');
+      
+      const mockRuntime = {
+        generateText: vi.fn().mockRejectedValue(new Error('Generation failed'))
+      };
+
+      const service = new TwitterService(mockRuntime as any);
+      
+      const insight = {
+        type: 'large_transaction',
+        data: {},
+        isInteresting: true,
+        timestamp: Date.now()
+      };
+
+      const tweet = await service.generateTweet(insight);
+      
+      // Should return a fallback tweet
+      expect(tweet).toBeDefined();
+      expect(tweet.length).toBeGreaterThan(0);
+    });
+  });
+});

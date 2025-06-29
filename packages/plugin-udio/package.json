@@ -1,6 +1,6 @@
 {
     "name": "@elizaos/plugin-udio",
-    "version": "0.1.9",
+    "version": "1.0.15",
     "description": "Suno AI Music Generation Plugin for Eliza",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",

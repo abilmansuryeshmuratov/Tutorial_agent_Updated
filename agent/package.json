@@ -1,6 +1,6 @@
 {
     "name": "@elizaos/agent",
-    "version": "0.1.9",
+    "version": "1.0.15",
     "main": "src/index.ts",
     "type": "module",
     "scripts": {

@@ -1,6 +1,6 @@
 {
 	"name": "eliza-docs",
-	"version": "0.1.9",
+	"version": "1.0.15",
 	"private": true,
 	"packageManager": "pnpm@9.4.0",
 	"scripts": {

@@ -1,6 +1,6 @@
 {
 	"name": "@elizaos/plugin-akash",
-	"version": "0.1.9",
+	"version": "1.0.15",
 	"description": "Akash Network Plugin for Eliza",
 	"main": "dist/index.js",
 	"types": "dist/index.d.ts",

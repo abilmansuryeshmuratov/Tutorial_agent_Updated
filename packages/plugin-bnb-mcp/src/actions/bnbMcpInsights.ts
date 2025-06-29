@@ -25,25 +25,46 @@ export const bnbMcpInsightsAction: Action = {
         _options: Record<string, unknown>,
         callback?: HandlerCallback
     ): Promise<boolean> => {
+        const startTime = Date.now();
         elizaLogger.log("Starting BNB MCP insights action...");
         
         try {
-            // Initialize services
+            // Initialize services with all configuration
+            const rpcUrl = runtime.getSetting("RPC_URL") || runtime.getSetting("BNB_RPC_URL");
+            const blockRange = runtime.getSetting("RPC_BLOCK_RANGE");
+            const retryAttempts = runtime.getSetting("RPC_RETRY_ATTEMPTS");
+            
             const mcpClient = new BNBMCPClient({
                 env: {
                     PRIVATE_KEY: runtime.getSetting("BNB_PRIVATE_KEY") || "",
+                    RPC_URL: rpcUrl,
+                    RPC_BLOCK_RANGE: blockRange,
+                    RPC_RETRY_ATTEMPTS: retryAttempts,
+                    RPC_CACHE_TTL: runtime.getSetting("RPC_CACHE_TTL")
                 }
             });
             const analyzer = new InsightAnalyzer();
             const twitterService = new TwitterService(runtime);
             
-            // Fetch data from MCP
+            // Fetch data from MCP with individual error handling
             elizaLogger.info("Fetching blockchain data from BNB MCP...");
-            const [transactions, newContracts, tokenTransfers] = await Promise.all([
-                mcpClient.getLargeTransactions("100", 20),
-                mcpClient.getNewContracts(200),
-                mcpClient.getTokenTransfers(undefined, 50)
-            ]);
+            
+            const fetchPromises = [
+                mcpClient.getLargeTransactions("100", 20).catch(err => {
+                    elizaLogger.error("Failed to fetch large transactions:", err);
+                    return [];
+                }),
+                mcpClient.getNewContracts(200).catch(err => {
+                    elizaLogger.error("Failed to fetch new contracts:", err);
+                    return [];
+                }),
+                mcpClient.getTokenTransfers(undefined, 50).catch(err => {
+                    elizaLogger.error("Failed to fetch token transfers:", err);
+                    return [];
+                })
+            ];
+            
+            const [transactions, newContracts, tokenTransfers] = await Promise.all(fetchPromises);
             
             elizaLogger.info(`Fetched: ${transactions.length} transactions, ${newContracts.length} contracts, ${tokenTransfers.length} transfers`);
             
@@ -78,6 +99,34 @@ export const bnbMcpInsightsAction: Action = {
                   }`
                 : "No significant BNB Chain activity detected in recent blocks.";
             
+            // Log metrics
+            const duration = Date.now() - startTime;
+            elizaLogger.info(`BNB MCP insights action completed in ${duration}ms`, {
+                insightsFound: filteredInsights.length,
+                tweetsPosted: tweetCount,
+                transactionsFetched: transactions.length,
+                contractsFetched: newContracts.length,
+                transfersFetched: tokenTransfers.length
+            });
+            
+            // Store metrics if cache manager available
+            if (runtime.cacheManager) {
+                await runtime.cacheManager.set(
+                    `bnb-mcp-action-metrics-${Date.now()}`,
+                    {
+                        timestamp: Date.now(),
+                        duration,
+                        insightsFound: filteredInsights.length,
+                        tweetsPosted: tweetCount,
+                        dataFetched: {
+                            transactions: transactions.length,
+                            contracts: newContracts.length,
+                            transfers: tokenTransfers.length
+                        }
+                    }
+                );
+            }
+            
             if (callback) {
                 callback({
                     text: responseText,
@@ -90,7 +139,13 @@ export const bnbMcpInsightsAction: Action = {
             
             return true;
         } catch (error) {
-            elizaLogger.error("BNB MCP insights action failed:", error);
+            const duration = Date.now() - startTime;
+            elizaLogger.error("BNB MCP insights action failed:", {
+                error: error.message,
+                stack: error.stack,
+                duration
+            });
+            
             if (callback) {
                 callback({
                     text: `Failed to fetch BNB Chain insights: ${error.message}`,
