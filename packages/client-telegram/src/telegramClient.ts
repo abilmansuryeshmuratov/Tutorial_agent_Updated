@@ -12,6 +12,9 @@ export class TelegramClient {
     private backendToken;
     private tgTrader;
     private options;
+    private groupOnlyMode: boolean;
+    private allowedGroupIds: string[];
+    private joinAnnouncement: boolean;
 
     constructor(runtime: IAgentRuntime, botToken: string) {
         elizaLogger.log("📱 Constructing new TelegramClient...");
@@ -26,7 +29,21 @@ export class TelegramClient {
         this.backend = runtime.getSetting("BACKEND_URL");
         this.backendToken = runtime.getSetting("BACKEND_TOKEN");
         this.tgTrader = runtime.getSetting("TG_TRADER"); // boolean To Be added to the settings
+        
+        // Group-only mode configuration
+        this.groupOnlyMode = runtime.getSetting("TELEGRAM_GROUP_ONLY_MODE") === "true" || 
+                           process.env.TELEGRAM_GROUP_ONLY_MODE === "true";
+        
+        const allowedGroups = runtime.getSetting("TELEGRAM_ALLOWED_GROUP_IDS") || 
+                            process.env.TELEGRAM_ALLOWED_GROUP_IDS || "";
+        this.allowedGroupIds = allowedGroups ? allowedGroups.split(",").map(id => id.trim()) : [];
+        
+        this.joinAnnouncement = runtime.getSetting("TELEGRAM_JOIN_ANNOUNCEMENT") !== "false" && 
+                              process.env.TELEGRAM_JOIN_ANNOUNCEMENT !== "false";
+        
         elizaLogger.log("✅ TelegramClient constructor completed");
+        elizaLogger.log(`📋 Group-only mode: ${this.groupOnlyMode}`);
+        elizaLogger.log(`📋 Allowed groups: ${this.allowedGroupIds.length > 0 ? this.allowedGroupIds.join(", ") : "All groups"}`);
     }
 
     public async start(): Promise<void> {
@@ -60,6 +77,31 @@ export class TelegramClient {
             return false;
         }
 
+        // Check if chat is a DM (private chat) and group-only mode is enabled
+        if (this.groupOnlyMode && ctx.chat?.type === 'private') {
+            elizaLogger.info(`Ignoring DM from user ${ctx.from?.id} in group-only mode`);
+            return false;
+        }
+
+        // If specific groups are allowed, check if current group is in the list
+        if (this.allowedGroupIds.length > 0 && ctx.chat?.type !== 'private') {
+            const currentGroupId = ctx.chat.id.toString();
+            if (!this.allowedGroupIds.includes(currentGroupId)) {
+                elizaLogger.info(`Group ${currentGroupId} not in allowed list`);
+                try {
+                    await ctx.reply("I'm not authorized to operate in this group. Leaving.");
+                    await ctx.leaveChat();
+                } catch (error) {
+                    elizaLogger.error(
+                        `Error leaving unauthorized group ${currentGroupId}:`,
+                        error
+                    );
+                }
+                return false;
+            }
+        }
+
+        // Legacy config support
         if (!config?.shouldOnlyJoinInAllowedGroups) {
             return true;
         }
@@ -94,8 +136,26 @@ export class TelegramClient {
                     (member) => member.id === ctx.botInfo.id
                 );
 
-                if (isBotAdded && !(await this.isGroupAuthorized(ctx))) {
-                    return;
+                if (isBotAdded) {
+                    // Check authorization first
+                    if (!(await this.isGroupAuthorized(ctx))) {
+                        return;
+                    }
+                    
+                    // Send join announcement if enabled
+                    if (this.joinAnnouncement && ctx.chat?.type !== 'private') {
+                        const groupName = 'title' in ctx.chat ? ctx.chat.title : 'this group';
+                        const announcement = `👋 Hello ${groupName}! I'm ${this.runtime.character.name}, your AI assistant. ` +
+                                           `I'm here to help with blockchain insights, answer questions, and engage in discussions. ` +
+                                           `Feel free to mention me in your messages!`;
+                        
+                        try {
+                            await ctx.reply(announcement);
+                            elizaLogger.log(`Sent join announcement to group: ${ctx.chat.id}`);
+                        } catch (error) {
+                            elizaLogger.error("Failed to send join announcement:", error);
+                        }
+                    }
                 }
             } catch (error) {
                 elizaLogger.error("Error handling new chat members:", error);

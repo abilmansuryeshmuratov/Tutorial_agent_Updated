@@ -10,6 +10,9 @@ import { ApiTwitterClient } from "./api-client.ts";
 // Define a union type for the Twitter client
 export type TwitterClient = ClientBase | ApiTwitterClient;
 
+// Export rate limit types and utilities
+export { rateLimitHandler, isRateLimitError, type RateLimitInfo, type RateLimitTracker } from "./rateLimit.ts";
+
 /**
  * A manager that orchestrates all specialized Twitter logic:
  * - client: base operations (login, timeline caching, etc.)

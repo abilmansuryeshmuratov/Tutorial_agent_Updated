@@ -18,6 +18,7 @@ import {
 } from "agent-twitter-client";
 import { EventEmitter } from "events";
 import type { TwitterConfig } from "./environment.ts";
+import { isRateLimitError } from "./rateLimit.js";
 
 export function extractAnswer(text: string): string {
     const startIndex = text.indexOf("Answer: ") + 8;
@@ -63,8 +64,19 @@ export class RequestQueue {
                 await request();
             } catch (error) {
                 console.error("Error processing request:", error);
+                
+                // Check if it's a rate limit error
+                if (isRateLimitError(error)) {
+                    elizaLogger.warn("Rate limit detected in RequestQueue, applying longer backoff");
+                    // For rate limits, wait at least 60 seconds
+                    const rateLimitDelay = 60000; // 60 seconds
+                    await new Promise((resolve) => setTimeout(resolve, rateLimitDelay));
+                } else {
+                    // For other errors, use exponential backoff
+                    await this.exponentialBackoff(this.queue.length);
+                }
+                
                 this.queue.unshift(request);
-                await this.exponentialBackoff(this.queue.length);
             }
             await this.randomDelay();
         }

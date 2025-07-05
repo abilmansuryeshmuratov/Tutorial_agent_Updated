@@ -8,7 +8,8 @@
   ],
   "clients": [
     "twitter",
-    "discord"
+    "discord",
+    "telegram"
   ],
   "modelProvider": "openai",
   "useEmbeddings": true,
