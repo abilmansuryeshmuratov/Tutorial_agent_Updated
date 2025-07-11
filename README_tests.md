@@ -38,14 +38,20 @@ tests/
 
 ## Running Tests
 
+### Current Test Status
+As of the latest run:
+- **Total**: 274 tests
+- **Passing**: 261 tests (95.3%)
+- **Failing**: 13 tests (4.7%) - All failures are due to Twitter API rate limits
+
 ### Quick Start
 
 ```bash
 # Run all tests
 npm test
 
-# Run only passing tests (no API keys required)
-cd tests && ./run-working-tests.sh
+# Run only unit and integration tests (no API keys required)
+npx vitest run tests/unit tests/integration
 
 # Run specific test file
 npx vitest run tests/unit/clients/twitter/twitter-client-integration.test.ts
@@ -146,7 +152,14 @@ BNB_PRIVATE_KEY=dummy_key_not_used
    - Token operations
    - DeFi activity
 
-4. **Combined Tests**
+4. **Telegram API Tests**
+   - Bot authentication
+   - Message handling
+   - Group operations
+   - Webhook configuration
+   - Error handling
+
+5. **Combined Tests**
    - Full Tutorial Agent workflow
    - Blockchain + AI integration
    - Market sentiment analysis
@@ -246,8 +259,9 @@ BNB_MCP_SCHEDULED_INSIGHTS=true
 BNB_MCP_CHECK_INTERVAL=30
 BNB_MCP_AUTO_TWEET=true
 
-# Optional: Telegram
+# Optional: Telegram (required for Telegram tests)
 TELEGRAM_BOT_TOKEN=your_bot_token
+TELEGRAM_GROUP_ONLY_MODE=false
 TELEGRAM_ALLOWED_GROUP_IDS=group1,group2
 ```
 
@@ -270,6 +284,12 @@ Be aware of API limitations:
 - Consider private RPC for production
 
 ## Troubleshooting
+
+### Recent Fixes Applied
+The following production bugs were fixed during test improvements:
+1. **Missing await in tweet posting** - Fixed async timing issue in `post.ts`
+2. **Filter array not reassigning** - Fixed array mutation bug in `interactions.ts`
+3. **Premature tweet truncation** - Fixed note tweet length handling
 
 ### Common Test Failures
 

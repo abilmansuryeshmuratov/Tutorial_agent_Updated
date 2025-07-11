@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { TwitterClient } from '@elizaos/client-twitter';
 import { IAgentRuntime, elizaLogger } from '@elizaos/core';
 import { mockTweets, mockUsers, mockApiResponses, createMockApiResponse, mockRateLimitHeaders } from './mocks/twitter-api-v2.mock';
+import { setupTwitterTestEnv, restoreProcessEnv } from './test-utils/env-mock';
 
 // Mock the dependencies
 vi.mock('agent-twitter-client', () => ({
@@ -54,6 +55,9 @@ describe('TwitterClient Integration Tests', () => {
     beforeEach(() => {
         // Reset all mocks
         vi.clearAllMocks();
+        
+        // Setup test environment
+        setupTwitterTestEnv();
 
         // Mock runtime
         runtime = {
@@ -134,6 +138,7 @@ describe('TwitterClient Integration Tests', () => {
 
     afterEach(() => {
         vi.clearAllMocks();
+        restoreProcessEnv();
     });
 
     describe('Client Initialization', () => {

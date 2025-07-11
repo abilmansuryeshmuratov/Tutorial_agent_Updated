@@ -606,24 +606,13 @@ export class TwitterPostClient {
                     "text",
                 ]).text;
                 if (parsingText) {
-                    tweetTextForPosting = truncateToCompleteSentence(
-                        extractAttributes(rawTweetContent, ["text"]).text,
-                        this.client.twitterConfig.MAX_TWEET_LENGTH
-                    );
+                    tweetTextForPosting = parsingText;
                 }
             }
 
             // Use the raw text
             if (!tweetTextForPosting) {
                 tweetTextForPosting = rawTweetContent;
-            }
-
-            // Truncate the content to the maximum tweet length specified in the environment settings, ensuring the truncation respects sentence boundaries.
-            if (maxTweetLength) {
-                tweetTextForPosting = truncateToCompleteSentence(
-                    tweetTextForPosting,
-                    maxTweetLength
-                );
             }
 
             const removeQuotes = (str: string) =>
@@ -635,6 +624,14 @@ export class TwitterPostClient {
             tweetTextForPosting = removeQuotes(
                 fixNewLines(tweetTextForPosting)
             );
+
+            // Only truncate if it's not going to be a note tweet
+            if (maxTweetLength && tweetTextForPosting.length <= DEFAULT_MAX_TWEET_LENGTH) {
+                tweetTextForPosting = truncateToCompleteSentence(
+                    tweetTextForPosting,
+                    maxTweetLength
+                );
+            }
 
             if (this.isDryRun) {
                 elizaLogger.info(
@@ -659,7 +656,7 @@ export class TwitterPostClient {
                     elizaLogger.log(
                         `Posting new tweet:\n ${tweetTextForPosting}`
                     );
-                    this.postTweet(
+                    await this.postTweet(
                         this.runtime,
                         this.client,
                         tweetTextForPosting,

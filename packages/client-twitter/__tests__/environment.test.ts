@@ -1,8 +1,21 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { validateTwitterConfig } from '../src/environment';
 import type { IAgentRuntime } from '@elizaos/core';
 
+// Store original process.env
+let originalEnv: NodeJS.ProcessEnv;
+
 describe('Twitter Environment Configuration', () => {
+    beforeEach(() => {
+        // Store and clean process.env to prevent pollution from .env file
+        originalEnv = { ...process.env };
+        process.env = {};
+    });
+
+    afterEach(() => {
+        // Restore original process.env
+        process.env = originalEnv;
+    });
     const mockRuntime: IAgentRuntime = {
         env: {
             TWITTER_USERNAME: 'testuser123',

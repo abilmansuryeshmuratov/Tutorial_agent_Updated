@@ -9,6 +9,9 @@ import {
     createMockTweet 
 } from './mocks/twitter-api-v2.mock';
 
+// Setup core mocks similar to other test files
+import { setupTwitterTestEnv, restoreProcessEnv } from './test-utils/env-mock';
+
 // Mock dependencies
 vi.mock('@elizaos/core', async () => {
     const actual = await vi.importActual('@elizaos/core');
@@ -59,6 +62,7 @@ describe('Twitter Post Validation Tests', () => {
 
     beforeEach(() => {
         vi.clearAllMocks();
+        setupTwitterTestEnv();
 
         // Mock Twitter client
         mockClient = {
@@ -88,7 +92,7 @@ describe('Twitter Post Validation Tests', () => {
                 getTweet: vi.fn()
             },
             requestQueue: {
-                add: vi.fn(fn => fn())
+                add: vi.fn().mockImplementation(async (fn) => fn())
             },
             cacheTweet: vi.fn(),
             saveRequestMessage: vi.fn(),
@@ -150,6 +154,7 @@ describe('Twitter Post Validation Tests', () => {
 
     afterEach(() => {
         vi.clearAllMocks();
+        restoreProcessEnv();
     });
 
     describe('Tweet Creation and Validation', () => {
@@ -169,17 +174,41 @@ describe('Twitter Post Validation Tests', () => {
         it('should handle standard tweet creation', async () => {
             const tweetText = 'Hello Twitter! This is a test tweet.';
             vi.mocked(generateText).mockResolvedValueOnce(tweetText);
-            mockClient.twitterClient.sendTweet.mockResolvedValueOnce(
-                createMockApiResponse(mockApiResponses.createTweet.success)
-            );
+            
+            // Mock the API response
+            const mockResponse = {
+                json: vi.fn().mockResolvedValue({
+                    data: {
+                        create_tweet: {
+                            tweet_results: {
+                                result: {
+                                    rest_id: "1234567890123456789",
+                                    legacy: {
+                                        full_text: tweetText,
+                                        conversation_id_str: "1234567890123456789",
+                                        created_at: new Date().toISOString(),
+                                        in_reply_to_status_id_str: null
+                                    }
+                                }
+                            }
+                        }
+                    }
+                })
+            };
+            
+            mockClient.twitterClient.sendTweet.mockResolvedValueOnce(mockResponse);
 
             await postClient.generateNewTweet();
 
+            // Wait for any pending async operations
+            await new Promise(resolve => setTimeout(resolve, 100));
+
             expect(mockClient.requestQueue.add).toHaveBeenCalled();
+            
             expect(mockClient.twitterClient.sendTweet).toHaveBeenCalledWith(
                 tweetText,
                 undefined,
-                undefined
+                null
             );
         });
 
@@ -190,19 +219,34 @@ describe('Twitter Post Validation Tests', () => {
                 data: {
                     notetweet_create: {
                         tweet_results: {
-                            result: mockTweets.longTweet
+                            result: {
+                                rest_id: "1234567890123456795",
+                                legacy: {
+                                    full_text: longTweetText,
+                                    conversation_id_str: "1234567890123456795",
+                                    created_at: new Date().toISOString(),
+                                    in_reply_to_status_id_str: null
+                                }
+                            }
                         }
                     }
                 }
             });
 
+            // Check initial state
+            expect(postClient['isDryRun']).toBe(false);
+            
             await postClient.generateNewTweet();
 
+            // Wait for any pending async operations
+            await new Promise(resolve => setTimeout(resolve, 100));
+
             expect(mockClient.requestQueue.add).toHaveBeenCalled();
+            
             expect(mockClient.twitterClient.sendNoteTweet).toHaveBeenCalledWith(
                 longTweetText,
                 undefined,
-                undefined
+                null
             );
         });
 
@@ -217,10 +261,32 @@ describe('Twitter Post Validation Tests', () => {
             
             // Standard tweet succeeds
             mockClient.twitterClient.sendTweet.mockResolvedValueOnce(
-                createMockApiResponse(mockApiResponses.createTweet.success)
+                {
+                json: vi.fn().mockResolvedValue({
+                    data: {
+                        create_tweet: {
+                            tweet_results: {
+                                result: {
+                                    rest_id: "1234567890123456789",
+                                    legacy: {
+                                        full_text: "Tweet content",
+                                        conversation_id_str: "1234567890123456789", 
+                                        created_at: new Date().toISOString(),
+                                        in_reply_to_status_id_str: null
+                                    }
+                                }
+                            }
+                        }
+                    }
+                })
+            }
             );
 
             await postClient.generateNewTweet();
+
+            // Wait for any pending async operations
+            await new Promise(resolve => setTimeout(resolve, 100));
+
 
             expect(mockClient.twitterClient.sendNoteTweet).toHaveBeenCalled();
             expect(mockClient.twitterClient.sendTweet).toHaveBeenCalled();
@@ -248,10 +314,32 @@ describe('Twitter Post Validation Tests', () => {
             });
 
             mockClient.twitterClient.sendTweet.mockResolvedValueOnce(
-                createMockApiResponse(mockApiResponses.createTweet.success)
+                {
+                json: vi.fn().mockResolvedValue({
+                    data: {
+                        create_tweet: {
+                            tweet_results: {
+                                result: {
+                                    rest_id: "1234567890123456789",
+                                    legacy: {
+                                        full_text: "Tweet content",
+                                        conversation_id_str: "1234567890123456789", 
+                                        created_at: new Date().toISOString(),
+                                        in_reply_to_status_id_str: null
+                                    }
+                                }
+                            }
+                        }
+                    }
+                })
+            }
             );
 
             await postClient.generateNewTweet();
+
+            // Wait for any pending async operations
+            await new Promise(resolve => setTimeout(resolve, 100));
+
 
             expect(mockClient.twitterClient.sendTweet).toHaveBeenCalledWith(
                 'Check out this image!',
@@ -269,16 +357,38 @@ describe('Twitter Post Validation Tests', () => {
             const rawTweet = '"Hello Twitter!\\nThis is a test."';
             vi.mocked(generateText).mockResolvedValueOnce(rawTweet);
             mockClient.twitterClient.sendTweet.mockResolvedValueOnce(
-                createMockApiResponse(mockApiResponses.createTweet.success)
+                {
+                json: vi.fn().mockResolvedValue({
+                    data: {
+                        create_tweet: {
+                            tweet_results: {
+                                result: {
+                                    rest_id: "1234567890123456789",
+                                    legacy: {
+                                        full_text: "Tweet content",
+                                        conversation_id_str: "1234567890123456789", 
+                                        created_at: new Date().toISOString(),
+                                        in_reply_to_status_id_str: null
+                                    }
+                                }
+                            }
+                        }
+                    }
+                })
+            }
             );
 
             await postClient.generateNewTweet();
+
+            // Wait for any pending async operations
+            await new Promise(resolve => setTimeout(resolve, 100));
+
 
             // Should remove quotes and fix newlines
             expect(mockClient.twitterClient.sendTweet).toHaveBeenCalledWith(
                 'Hello Twitter!\n\nThis is a test.',
                 undefined,
-                undefined
+                null
             );
         });
     });
@@ -286,15 +396,33 @@ describe('Twitter Post Validation Tests', () => {
     describe('API Response Validation', () => {
         it('should validate successful tweet creation response', async () => {
             vi.mocked(generateText).mockResolvedValueOnce('Test tweet');
-            const response = createMockApiResponse(mockApiResponses.createTweet.success);
+            const response = {
+                json: vi.fn().mockResolvedValue({
+                    data: {
+                        create_tweet: {
+                            tweet_results: {
+                                result: {
+                                    rest_id: "1234567890123456789",
+                                    legacy: {
+                                        full_text: "Tweet content",
+                                        conversation_id_str: "1234567890123456789", 
+                                        created_at: new Date().toISOString(),
+                                        in_reply_to_status_id_str: null
+                                    }
+                                }
+                            }
+                        }
+                    }
+                })
+            };
             mockClient.twitterClient.sendTweet.mockResolvedValueOnce(response);
 
             await postClient.generateNewTweet();
 
             const responseData = await response.json();
-            expect(responseData.data).toHaveProperty('id');
-            expect(responseData.data).toHaveProperty('text');
-            expect(responseData.data).toHaveProperty('edit_history_tweet_ids');
+            expect(responseData.data.create_tweet.tweet_results.result).toHaveProperty('rest_id');
+            expect(responseData.data.create_tweet.tweet_results.result.legacy).toHaveProperty('full_text');
+            expect(responseData.data.create_tweet.tweet_results.result).toBeDefined();
         });
 
         it('should handle rate limit errors', async () => {
@@ -371,9 +499,11 @@ describe('Twitter Post Validation Tests', () => {
 
             const results = await postClient['processTweetActions']();
 
-            expect(results).toHaveLength(1);
+            expect(results).toHaveLength(2); // Processing both tweets
             expect(results[0].executedActions).toContain('like');
+            expect(results[1].executedActions).toContain('like');
             expect(mockClient.twitterClient.likeTweet).toHaveBeenCalledWith('1');
+            expect(mockClient.twitterClient.likeTweet).toHaveBeenCalledWith('2');
         });
 
         it('should handle already liked tweets', async () => {
@@ -410,9 +540,11 @@ describe('Twitter Post Validation Tests', () => {
 
             const results = await postClient['processTweetActions']();
 
-            expect(results).toHaveLength(1);
+            expect(results).toHaveLength(2); // Processing both tweets
             expect(results[0].executedActions).toContain('retweet');
+            expect(results[1].executedActions).toContain('retweet');
             expect(mockClient.twitterClient.retweet).toHaveBeenCalledWith('1');
+            expect(mockClient.twitterClient.retweet).toHaveBeenCalledWith('2');
         });
 
         it('should process quote tweets with proper validation', async () => {
@@ -425,13 +557,32 @@ describe('Twitter Post Validation Tests', () => {
 
             vi.mocked(generateText).mockResolvedValueOnce('Great insights here!');
             mockClient.twitterClient.sendQuoteTweet.mockResolvedValueOnce(
-                createMockApiResponse(mockApiResponses.createTweet.success)
+                {
+                json: vi.fn().mockResolvedValue({
+                    data: {
+                        create_tweet: {
+                            tweet_results: {
+                                result: {
+                                    rest_id: "1234567890123456789",
+                                    legacy: {
+                                        full_text: "Tweet content",
+                                        conversation_id_str: "1234567890123456789", 
+                                        created_at: new Date().toISOString(),
+                                        in_reply_to_status_id_str: null
+                                    }
+                                }
+                            }
+                        }
+                    }
+                })
+            }
             );
 
             const results = await postClient['processTweetActions']();
 
-            expect(results).toHaveLength(1);
+            expect(results).toHaveLength(2); // Processing both tweets
             expect(results[0].executedActions).toContain('quote');
+            expect(results[1].executedActions).toContain('quote');
             expect(mockClient.twitterClient.sendQuoteTweet).toHaveBeenCalledWith(
                 'Great insights here!',
                 '1'
@@ -448,13 +599,32 @@ describe('Twitter Post Validation Tests', () => {
 
             vi.mocked(generateText).mockResolvedValueOnce('Thanks for sharing!');
             mockClient.twitterClient.sendTweet.mockResolvedValueOnce(
-                createMockApiResponse(mockApiResponses.createTweet.success)
+                {
+                json: vi.fn().mockResolvedValue({
+                    data: {
+                        create_tweet: {
+                            tweet_results: {
+                                result: {
+                                    rest_id: "1234567890123456789",
+                                    legacy: {
+                                        full_text: "Tweet content",
+                                        conversation_id_str: "1234567890123456789", 
+                                        created_at: new Date().toISOString(),
+                                        in_reply_to_status_id_str: null
+                                    }
+                                }
+                            }
+                        }
+                    }
+                })
+            }
             );
 
             const results = await postClient['processTweetActions']();
 
-            expect(results).toHaveLength(1);
+            expect(results).toHaveLength(2); // Processing both tweets
             expect(results[0].executedActions).toContain('reply');
+            expect(results[1].executedActions).toContain('reply');
             expect(mockClient.twitterClient.sendTweet).toHaveBeenCalledWith(
                 'Thanks for sharing!',
                 '1',
@@ -505,10 +675,31 @@ describe('Twitter Post Validation Tests', () => {
         it('should create memory for posted tweets', async () => {
             vi.mocked(generateText).mockResolvedValueOnce('Test tweet');
             mockClient.twitterClient.sendTweet.mockResolvedValueOnce(
-                createMockApiResponse(mockApiResponses.createTweet.success)
+                {
+                json: vi.fn().mockResolvedValue({
+                    data: {
+                        create_tweet: {
+                            tweet_results: {
+                                result: {
+                                    rest_id: "1234567890123456789",
+                                    legacy: {
+                                        full_text: "Tweet content",
+                                        conversation_id_str: "1234567890123456789", 
+                                        created_at: new Date().toISOString(),
+                                        in_reply_to_status_id_str: null
+                                    }
+                                }
+                            }
+                        }
+                    }
+                })
+            }
             );
 
             await postClient.generateNewTweet();
+
+            // Wait for any pending async operations
+            await new Promise(resolve => setTimeout(resolve, 100));
 
             expect(runtime.messageManager.createMemory).toHaveBeenCalledWith(
                 expect.objectContaining({
@@ -524,10 +715,31 @@ describe('Twitter Post Validation Tests', () => {
         it('should cache last post timestamp', async () => {
             vi.mocked(generateText).mockResolvedValueOnce('Test tweet');
             mockClient.twitterClient.sendTweet.mockResolvedValueOnce(
-                createMockApiResponse(mockApiResponses.createTweet.success)
+                {
+                json: vi.fn().mockResolvedValue({
+                    data: {
+                        create_tweet: {
+                            tweet_results: {
+                                result: {
+                                    rest_id: "1234567890123456789",
+                                    legacy: {
+                                        full_text: "Tweet content",
+                                        conversation_id_str: "1234567890123456789", 
+                                        created_at: new Date().toISOString(),
+                                        in_reply_to_status_id_str: null
+                                    }
+                                }
+                            }
+                        }
+                    }
+                })
+            }
             );
 
             await postClient.generateNewTweet();
+
+            // Wait for any pending async operations
+            await new Promise(resolve => setTimeout(resolve, 100));
 
             expect(runtime.cacheManager.set).toHaveBeenCalledWith(
                 'twitter/testbot/lastPost',

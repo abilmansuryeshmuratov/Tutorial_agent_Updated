@@ -374,7 +374,7 @@ export function createMockTweet(overrides?: Partial<Tweet>): Tweet {
         text: "Hello Twitter!",
         conversationId: "1234567890123456789",
         createdAt: "Mon Jan 01 12:00:00 +0000 2024",
-        timestamp: 1704110400000,
+        timestamp: Math.floor(Date.now() / 1000), // Twitter uses seconds, not milliseconds
         userId: "9876543210",
         inReplyToStatusId: null,
         permanentUrl: "https://twitter.com/testuser/status/1234567890123456789",
@@ -406,18 +406,18 @@ export const mockTimeline = [
     createMockTweet({
         id: "1234567890123456789",
         text: "Just launched our new feature! 🚀",
-        timestamp: Date.now() - 60000
+        timestamp: Math.floor(Date.now() / 1000) - 60 // 1 minute ago
     }),
     createMockTweet({
         id: "1234567890123456790",
         text: "Thanks for all the support @community!",
         mentions: ["@community"],
-        timestamp: Date.now() - 120000
+        timestamp: Math.floor(Date.now() / 1000) - 120 // 2 minutes ago
     }),
     createMockTweet({
         id: "1234567890123456791",
         text: "Working on some exciting updates #coding #typescript",
         hashtags: ["#coding", "#typescript"],
-        timestamp: Date.now() - 180000
+        timestamp: Math.floor(Date.now() / 1000) - 180 // 3 minutes ago
     })
 ];

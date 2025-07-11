@@ -71,6 +71,7 @@ import { binancePlugin } from "@elizaos/plugin-binance";
 import { birdeyePlugin } from "@elizaos/plugin-birdeye";
 import { bittensorPlugin } from "@elizaos/plugin-bittensor";
 import { bnbPlugin } from "@elizaos/plugin-bnb";
+import { bnbMcpPlugin } from "@elizaos/plugin-bnb-mcp";
 import {
     advancedTradePlugin,
     coinbaseCommercePlugin,
@@ -1252,6 +1253,9 @@ export async function createAgent(
             getSecret(character, "BNB_PRIVATE_KEY") ||
             getSecret(character, "BNB_PUBLIC_KEY")?.startsWith("0x")
                 ? bnbPlugin
+                : null,
+            getSecret(character, "BNB_MCP_SCHEDULED_INSIGHTS") === "true"
+                ? bnbMcpPlugin
                 : null,
             (getSecret(character, "EMAIL_INCOMING_USER") &&
                 getSecret(character, "EMAIL_INCOMING_PASS")) ||
