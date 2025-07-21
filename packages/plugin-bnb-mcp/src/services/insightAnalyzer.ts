@@ -2,7 +2,7 @@ import { elizaLogger } from "@elizaos/core";
 import type { BNBMCPTransaction, BNBMCPTokenTransfer, BNBMCPContractCreation, BNBMCPInsight } from "../types";
 
 export class InsightAnalyzer {
-    private readonly WHALE_THRESHOLD_BNB = 1000; // 1000 BNB
+    private readonly WHALE_THRESHOLD_BNB = 100; // 100 BNB (~$60k at $600/BNB)
     private readonly HIGH_GAS_CONTRACT_THRESHOLD = 5000000; // 5M gas units
     
     /**
@@ -21,7 +21,7 @@ export class InsightAnalyzer {
                     description: `A massive transfer of ${valueBNB.toFixed(2)} BNB (~$${(valueBNB * 600).toLocaleString()}) was detected`,
                     data: tx,
                     timestamp: tx.timestamp,
-                    severity: valueBNB >= this.WHALE_THRESHOLD_BNB * 5 ? 'high' : 'medium'
+                    severity: valueBNB >= this.WHALE_THRESHOLD_BNB * 10 ? 'high' : 'medium'
                 });
             }
         }
@@ -47,7 +47,7 @@ export class InsightAnalyzer {
         
         // Find tokens with high activity
         for (const [tokenAddress, tokenTransfers] of tokenGroups) {
-            if (tokenTransfers.length >= 10) {
+            if (tokenTransfers.length >= 5) {
                 const tokenSymbol = tokenTransfers[0].tokenSymbol || 'Unknown';
                 insights.push({
                     type: 'large_transfer',
@@ -55,7 +55,7 @@ export class InsightAnalyzer {
                     description: `${tokenTransfers.length} transfers detected for ${tokenSymbol} in recent blocks`,
                     data: tokenTransfers[0],
                     timestamp: Date.now(),
-                    severity: tokenTransfers.length >= 20 ? 'high' : 'medium'
+                    severity: tokenTransfers.length >= 10 ? 'high' : 'medium'
                 });
             }
         }
@@ -80,7 +80,7 @@ export class InsightAnalyzer {
                     description: `New contract deployed with high gas usage (${(gasUsed / 1e6).toFixed(2)}M gas)`,
                     data: contract,
                     timestamp: contract.timestamp,
-                    severity: 'medium'
+                    severity: gasUsed >= this.HIGH_GAS_CONTRACT_THRESHOLD * 2 ? 'high' : 'medium'
                 });
             } else {
                 insights.push({

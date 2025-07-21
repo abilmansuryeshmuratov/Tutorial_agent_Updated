@@ -1,3 +1,6 @@
+MICROUPDATE FOR ECHIDNA: 
+"pnpm start --characters="characters/echidna.json"""
+
 # Tutorial Agent Testing Guide
 
 This comprehensive guide covers all testing aspects of the Tutorial Agent, including unit tests, integration tests, and API tests.
